@@ -82,21 +82,34 @@ void _rebuild_time(lz4_log_buf * lz4_buf, lz4_log_buf ** new_lz4_buf)
 void * log_producer_send_thread(void * param)
 {
     log_producer_manager * producer_manager = (log_producer_manager *)param;
+    int statusCode;
 
     if (producer_manager->sender_data_queue == NULL)
     {
         return NULL;
     }
 
+    CURL *curl = NULL;
     while (!producer_manager->shutdown)
     {
         void * send_param = log_queue_pop(producer_manager->sender_data_queue, 30);
         if (send_param != NULL)
         {
-            log_producer_send_fun(send_param);
+            if (!curl) {
+                curl = curl_easy_init();
+            }
+
+            log_producer_send_fun0(curl, send_param, &statusCode);
+            if (statusCode / 100 != 2) {
+                    curl_easy_cleanup(curl);
+                    curl = NULL;
+            }
         }
     }
 
+    if (curl) {
+        curl_easy_cleanup(curl);
+    }
     return NULL;
 }
 
@@ -129,7 +142,7 @@ void * log_producer_send_thread_global(void * param)
     return NULL;
 }
 
-void * log_producer_send_fun(void * param)
+void * log_producer_send_fun0(CURL *curl, void * param, int *statusCode)
 {
     log_producer_send_param * send_param = (log_producer_send_param *)param;
     if (send_param->magic_num != LOG_PRODUCER_SEND_MAGIC_NUM)
@@ -187,7 +200,7 @@ void * log_producer_send_fun(void * param)
         sds stsToken = NULL;
         log_producer_config_get_security(config, &accessKeyId, &accessKey, &stsToken);
 
-        post_log_result * rst = post_logs_from_lz4buf(config->endpoint, accessKeyId,
+        post_log_result * rst = post_logs_from_lz4buf0(curl, config->endpoint, accessKeyId,
                                                       accessKey, stsToken,
                                                       config->project, config->logstore,
                                                       send_buf, &option);
@@ -196,6 +209,9 @@ void * log_producer_send_fun(void * param)
         sdsfree(stsToken);
 
         int32_t sleepMs = log_producer_on_send_done(send_param, rst, &error_info);
+        if (statusCode) {
+            *statusCode = rst->statusCode;
+        }
 
         post_log_result_destroy(rst);
 
@@ -232,6 +248,11 @@ void * log_producer_send_fun(void * param)
 
     return NULL;
 
+}
+
+void * log_producer_send_fun(void * param)
+{
+    return log_producer_send_fun0(NULL, param, NULL);
 }
 
 int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log_result * result, send_error_info * error_info)

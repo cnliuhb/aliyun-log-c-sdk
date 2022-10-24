@@ -126,11 +126,11 @@ void post_log_result_destroy(post_log_result * result)
     }
 }
 
-post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, lz4_log_buf * buffer, log_post_option * option)
+post_log_result * post_logs_from_lz4buf0(CURL *curl, const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, lz4_log_buf * buffer, log_post_option * option)
 {
     post_log_result * result = (post_log_result *)malloc(sizeof(post_log_result));
     memset(result, 0, sizeof(post_log_result));
-    CURL *curl = curl_easy_init();
+
     if (curl != NULL)
     {
         // url
@@ -357,8 +357,7 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         sdsfree(headerHost);
         sdsfree(sigContent);
         sdsfree(headerSig);
-        /* always cleanup */
-        curl_easy_cleanup(curl);
+
         if (connect_to != NULL)
         {
             curl_slist_free_all(connect_to);
@@ -366,5 +365,15 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
     }
 
 
+    return result;
+}
+
+
+post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, lz4_log_buf * buffer, log_post_option * option)
+{
+    CURL *curl = curl_easy_init();
+    post_log_result * result = post_logs_from_lz4buf0(curl, endpoint, accesskeyId, accessKey, stsToken, project, logstore, buffer, option);
+    /* always cleanup */
+    curl_easy_cleanup(curl);
     return result;
 }

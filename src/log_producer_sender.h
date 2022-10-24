@@ -5,7 +5,7 @@
 #ifndef LOG_C_SDK_LOG_PRODUCER_SENDER_H
 #define LOG_C_SDK_LOG_PRODUCER_SENDER_H
 
-
+#include <curl/curl.h>
 #include "log_define.h"
 #include "log_producer_config.h"
 #include "log_builder.h"
@@ -39,6 +39,8 @@ typedef struct _log_producer_send_param
     uint32_t magic_num;
     uint32_t builder_time;
 }log_producer_send_param;
+
+void * log_producer_send_fun0(CURL *curl, void * param, int *statusCode);
 
 extern void * log_producer_send_fun(void * send_param);
 
