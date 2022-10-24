@@ -97,6 +97,7 @@ void * log_producer_send_thread(void * param)
         {
             if (!curl) {
                 curl = curl_easy_init();
+                curl_easy_setopt(curl, CURLOPT_DNS_CACHE_TIMEOUT, 600);
             }
 
             log_producer_send_fun0(curl, send_param, &statusCode);
